@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cosmic Match: Memory Game</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+        font-family:'Roboto',sans-serif;
+        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+        color:#fff;
+        min-height:100vh;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        padding:20px;
+        overflow-x:hidden;
+    }
+    .header { text-align:center; margin:20px 0; width:100%; }
+    h1 {
+        font-family:'Orbitron',sans-serif;
+        font-size:2.8rem;
+        margin-bottom:10px;
+        text-shadow: 0 0 10px #00b3ff,0 0 20px #00b3ff;
+        letter-spacing:2px;
+    }
+    .subtitle { font-size:1.2rem; opacity:0.8; margin-bottom:30px; }
+    .game-container {
+        width:100%;
+        max-width:800px;
+        background: rgba(13,30,45,0.8);
+        border-radius:15px;
+        padding:20px;
+        box-shadow: 0 0 25px rgba(0,179,255,0.5);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(0,179,255,0.3);
+    }
+    .stats { display:flex; justify-content:space-between; margin-bottom:20px; padding:15px; background: rgba(0,25,50,0.5); border-radius:10px; font-size:1.2rem; }
+    .stat { display:flex; flex-direction:column; align-items:center; }
+    .stat-value { font-family:'Orbitron',sans-serif; font-size:1.5rem; margin-top:5px; color:#00b3ff; }
+    .controls { display:flex; justify-content:center; gap:15px; margin-bottom:20px; flex-wrap:wrap; }
+    button {
+        padding:12px 25px;
+        border:none;
+        border-radius:50px;
+        background:linear-gradient(135deg, #00b3ff, #0062ff);
+        color:white;
+        font-family:'Orbitron',sans-serif;
+        font-weight:700;
+        cursor:pointer;
+        transition:all 0.3s ease;
+        box-shadow: 0 5px 15px rgba(0,98,255,0.4);
+    }
+    button:hover { transform:translateY(-3px); box-shadow: 0 8px 20px rgba(0,98,255,0.6); }
+    button:active { transform:translateY(1px); }
+    .difficulty { display:flex; gap:10px; justify-content:center; margin-bottom:20px; }
+    .diff-btn { padding:8px 15px; font-size:0.9rem; }
+    .active-diff { background: linear-gradient(135deg, #ff0080, #8000ff); box-shadow:0 0 15px rgba(255,0,128,0.6); }
+    .game-board { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:0 auto; max-width:550px; }
+    .card {
+        aspect-ratio:1;
+        background: linear-gradient(135deg, #0062ff, #00b3ff);
+        border-radius:10px;
+        cursor:pointer;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        font-size:2.5rem;
+        transform-style:preserve-3d;
+        transition:transform 0.5s ease;
+        position:relative;
+    }
+    .card.flipped { transform:rotateY(180deg); }
+    .card-front, .card-back {
+        position:absolute;
+        width:100%;
+        height:100%;
+        backface-visibility:hidden;
+        border-radius:10px;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+    }
+    .card-front { background: linear-gradient(135deg, #0f2027, #203a43); transform:rotateY(180deg); }
+    .card-back { background: linear-gradient(135deg, #0062ff, #00b3ff); background-image:url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h20L0 20z' fill='%23ffffff' fill-opacity='0.1'/%3E%3C/svg%3E"); }
+    .matched .card-front { background: linear-gradient(135deg, #00ffaa, #00b3ff); box-shadow:0 0 15px rgba(0,255,170,0.5); }
+    .win-screen {
+        position:fixed; top:0; left:0; width:100%; height:100%;
+        background:rgba(0,0,0,0.9);
+        display:flex; flex-direction:column; justify-content:center; align-items:center;
+        z-index:100; opacity:0; pointer-events:none; transition:opacity 0.5s ease;
+    }
+    .win-screen.active { opacity:1; pointer-events:all; }
+    .win-content {
+        background:linear-gradient(135deg, #0f2027, #203a43);
+        padding:40px;
+        border-radius:20px;
+        text-align:center;
+        max-width:90%;
+        width:500px;
+        box-shadow:0 0 30px rgba(0,179,255,0.7);
+        transform:scale(0.9);
+        transition:transform 0.5s ease;
+    }
+    .win-screen.active .win-content { transform:scale(1); }
+    .win-title { font-family:'Orbitron',sans-serif; font-size:2.5rem; margin-bottom:20px; color:#00ffaa; text-shadow:0 0 10px #00ffaa; }
+    .win-stats { font-size:1.2rem; margin-bottom:30px; }
+    .win-stats span { color:#00b3ff; font-weight:bold; }
+    .stars { position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; overflow:hidden; }
+    .star { position:absolute; background-color:white; border-radius:50%; animation:twinkle linear infinite; }
+    @keyframes twinkle { 0%{opacity:0}50%{opacity:1}100%{opacity:0} }
+    .sound-toggle {
+        position:fixed; bottom:20px; right:20px; background: rgba(0,25,50,0.7);
+        width:50px; height:50px; border-radius:50%; display:flex; justify-content:center; align-items:center; cursor:pointer; z-index:10; box-shadow:0 0 15px rgba(0,179,255,0.5);
+    }
+    .sound-toggle i { font-size:1.5rem; color:#00b3ff; }
+</style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+
+<div class="header">
+    <h1>COSMIC MATCH</h1>
+    <p class="subtitle">Test your memory with this space-themed matching game</p>
+</div>
+
+<div class="game-container">
+    <div class="stats">
+        <div class="stat"><div>MOVES</div><div class="stat-value" id="moves">0</div></div>
+        <div class="stat"><div>TIME</div><div class="stat-value" id="timer">00:00</div></div>
+        <div class="stat"><div>MATCHES</div><div class="stat-value" id="matches">0</div></div>
+    </div>
+
+    <div class="controls">
+        <button id="restart-btn"><i class="fas fa-redo"></i> RESTART GAME</button>
+        <button id="hint-btn"><i class="fas fa-lightbulb"></i> HINT (3 LEFT)</button>
+    </div>
+
+    <div class="difficulty">
+        <button class="diff-btn active-diff" data-difficulty="easy">EASY</button>
+        <button class="diff-btn" data-difficulty="medium">MEDIUM</button>
+        <button class="diff-btn" data-difficulty="hard">HARD</button>
+    </div>
+
+    <div class="game-board" id="game-board"></div>
+</div>
+
+<div class="win-screen" id="win-screen">
+    <div class="win-content">
+        <h2 class="win-title">MISSION ACCOMPLISHED!</h2>
+        <div class="win-stats">
+            <p>You completed the game in <span id="win-moves">0</span> moves</p>
+            <p>Your time: <span id="win-time">00:00</span></p>
+            <p>Rating: <span id="win-rating">3 stars</span></p>
+        </div>
+        <button id="play-again-btn"><i class="fas fa-play"></i> PLAY AGAIN</button>
+    </div>
+</div>
+
+<div class="sound-toggle" id="sound-toggle">
+    <i class="fas fa-volume-up"></i>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    let moves = 0, matchedPairs = 0, totalPairs = 8, timer=null, seconds=0, flippedCards=[], lockBoard=false, gameStarted=false, hintsRemaining=3, soundEnabled=true;
+    const gameBoard=document.getElementById('game-board'),
+          movesElement=document.getElementById('moves'),
+          timerElement=document.getElementById('timer'),
+          matchesElement=document.getElementById('matches'),
+          restartBtn=document.getElementById('restart-btn'),
+          hintBtn=document.getElementById('hint-btn'),
+          winScreen=document.getElementById('win-screen'),
+          playAgainBtn=document.getElementById('play-again-btn'),
+          winMoves=document.getElementById('win-moves'),
+          winTime=document.getElementById('win-time'),
+          winRating=document.getElementById('win-rating'),
+          soundToggle=document.getElementById('sound-toggle'),
+          diffButtons=document.querySelectorAll('.diff-btn');
+
+    const cardIcons=['rocket','globe','user-astronaut','meteor','star','satellite','circle','moon','sun','eye','circle-notch','atom'];
+
+    const sounds={
+        flip: new Audio('sounds/flip.mp3'),
+        match: new Audio('sounds/match.mp3'),
+        mismatch: new Audio('sounds/mismatch.mp3'),
+        hint: new Audio('sounds/hint.mp3'),
+        win: new Audio('sounds/win.mp3')
+    };
+
+    initGame(); createStars();
+
+    restartBtn.addEventListener('click', initGame);
+    hintBtn.addEventListener('click', useHint);
+    playAgainBtn.addEventListener('click', initGame);
+    soundToggle.addEventListener('click', toggleSound);
+
+    diffButtons.forEach(btn=>{
+        btn.addEventListener('click',()=>{
+            diffButtons.forEach(b=>b.classList.remove('active-diff'));
+            btn.classList.add('active-diff');
+            totalPairs=btn.dataset.difficulty==='easy'?8:btn.dataset.difficulty==='medium'?12:18;
+            initGame();
+        });
+    });
+
+    function initGame(){
+        moves=0; matchedPairs=0; seconds=0; flippedCards=[]; lockBoard=false; gameStarted=false; hintsRemaining=3;
+        movesElement.textContent=moves; matchesElement.textContent=matchedPairs; timerElement.textContent='00:00';
+        hintBtn.innerHTML='<i class="fas fa-lightbulb"></i> HINT (3 LEFT)';
+        gameBoard.innerHTML=''; winScreen.classList.remove('active');
+        if(timer){clearInterval(timer); timer=null;}
+        createCards();
+    }
+
+    function createCards(){
+        const icons=cardIcons.slice(0,totalPairs);
+        const cardValues=[...icons,...icons];
+        const shuffledCards=shuffleArray(cardValues);
+        shuffledCards.forEach(icon=>{
+            const card=document.createElement('div');
+            card.classList.add('card'); card.dataset.icon=icon;
+            card.innerHTML=`<div class="card-front"><i class="fas fa-${icon}"></i></div><div class="card-back"><i class="fas fa-question"></i></div>`;
+            card.addEventListener('click',()=>flipCard(card));
+            gameBoard.appendChild(card);
+        });
+        gameBoard.style.gridTemplateColumns=totalPairs<=12?'repeat(4,1fr)':'repeat(6,1fr)';
+    }
+
+    function flipCard(card){
+        if(lockBoard || card===flippedCards[0] || card.classList.contains('matched')) return;
+        if(!gameStarted){startTimer(); gameStarted=true;}
+        playSound('flip'); card.classList.add('flipped');
+        if(flippedCards.length===0) flippedCards.push(card);
+        else { flippedCards.push(card); moves++; movesElement.textContent=moves; checkForMatch(); }
+    }
+
+    function checkForMatch(){
+        const [card1,card2]=flippedCards;
+        const isMatch=card1.dataset.icon===card2.dataset.icon;
+        if(isMatch){
+            playSound('match'); card1.classList.add('matched'); card2.classList.add('matched'); matchedPairs++; matchesElement.textContent=matchedPairs;
+            if(matchedPairs===totalPairs) endGame();
+            flippedCards=[];
+        } else{
+            playSound('mismatch'); lockBoard=true;
+            setTimeout(()=>{card1.classList.remove('flipped'); card2.classList.remove('flipped'); flippedCards=[]; lockBoard=false;},1000);
+        }
+    }
+
+    function startTimer(){
+        timer=setInterval(()=>{
+            seconds++;
+            const m=Math.floor(seconds/60); const s=seconds%60;
+            timerElement.textContent=`${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+        },1000);
+    }
+
+    function endGame(){
+        clearInterval(timer);
+        let ratingText;
+        const maxMoves=totalPairs*3;
+        if(moves<=totalPairs*1.5) ratingText='3 stars - Cosmic Genius!';
+        else if(moves<=maxMoves) ratingText='2 stars - Space Explorer!';
+        else ratingText='1 star - Novice Astronaut!';
+        playSound('win');
+        winMoves.textContent=moves; winTime.textContent=timerElement.textContent; winRating.textContent=ratingText;
+        setTimeout(()=>winScreen.classList.add('active'),1000);
+    }
+
+    function useHint(){
+        if(hintsRemaining<=0 || lockBoard) return;
+        const unmatched=Array.from(document.querySelectorAll('.card:not(.matched)'));
+        const faceDown=unmatched.filter(c=>!c.classList.contains('flipped'));
+        if(faceDown.length<2) return;
+        hintsRemaining--; hintBtn.innerHTML=`<i class="fas fa-lightbulb"></i> HINT (${hintsRemaining} LEFT)`; lockBoard=true;
+        const iconsMap={}; let matchFound=false, card1, card2;
+        for(const card of faceDown){const icon=card.dataset.icon; if(iconsMap[icon]){card1=iconsMap[icon]; card2=card; matchFound=true; break;} else iconsMap[icon]=card;}
+        if(matchFound){card1.classList.add('flipped'); card2.classList.add('flipped'); playSound('hint'); setTimeout(()=>{card1.classList.remove('flipped'); card2.classList.remove('flipped'); lockBoard=false;},1500);}
+        else lockBoard=false;
+    }
+
+    function toggleSound(){
+        soundEnabled=!soundEnabled;
+        const icon=soundToggle.querySelector('i');
+        if(soundEnabled){icon.classList.remove('fa-volume-mute'); icon.classList.add('fa-volume-up');}
+        else{icon.classList.remove('fa-volume-up'); icon.classList.add('fa-volume-mute');}
+    }
+
+    function playSound(type){if(!soundEnabled) return; if(sounds[type]){sounds[type].currentTime=0; sounds[type].play();}}
+
+    function shuffleArray(array){for(let i=array.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [array[i],array[j]]=[array[j],array[i]];} return array;}
+
+    function createStars(){
+        const starsContainer=document.getElementById('stars'); const starsCount=100;
+        for(let i=0;i<starsCount;i++){const star=document.createElement('div'); star.classList.add('star'); const x=Math.random()*100, y=Math.random()*100, size=Math.random()*3, duration=Math.random()*5+5; star.style.left=`${x}vw`; star.style.top=`${y}vh`; star.style.width=`${size}px`; star.style.height=`${size}px`; star.style.animationDuration=`${duration}s`; star.style.animationDelay=`${Math.random()*5}s`; starsContainer.appendChild(star);}
+    }
+});
+</script>
+</body>
+</html>
